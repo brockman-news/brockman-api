@@ -80,7 +80,7 @@ in
             --port ${toString cfg.port} \
             --hash-algorithm ${cfg.hashAlgorithm} \
             --hash-length ${toString cfg.hashLength} \
-            --state-directory /var/lib/goto \
+            --state-dir /var/lib/goto \
             --cache-size ${toString cfg.cacheSize}
         '';
         StateDirectory = "goto";
