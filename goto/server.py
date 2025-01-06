@@ -77,12 +77,19 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self) -> None:
         content_length = int(self.headers["Content-Length"])
         content = self.rfile.read(content_length)
-        content_hash = self.hasher.save(content)
-        print(f"headers: {self.headers}")
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        self.wfile.write(f'http://{self.headers["Host"]}/{content_hash}'.encode())
+        # Validate URL
+        url = urlparse(content.decode()).geturl()
+        if url:
+            content_hash = self.hasher.save(url.encode())
+            print(f"headers: {self.headers}")
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(f'http://{self.headers["Host"]}/{content_hash}'.encode())
+        else:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b"Invalid URL")
 
 
 class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
