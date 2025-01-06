@@ -2,6 +2,7 @@ import argparse
 import hashlib
 import http.server
 import socketserver
+from collections import OrderedDict
 from pathlib import Path
 from threading import Thread
 from urllib.parse import ParseResult, urlparse
@@ -15,17 +16,37 @@ def file_location(algorithm: str, length: int, hash_digest: str) -> Path:
     return path
 
 
+class LRU:
+    def __init__(self, max_size: int):
+        self.max_size = max_size
+        self.cache = OrderedDict()
+
+    def __contains__(self, key):
+        return key in self.cache
+
+    def __getitem__(self, key):
+        self.cache.move_to_end(key)
+        return self.cache[key]
+
+    def __setitem__(self, key, value):
+        self.cache[key] = value
+        self.cache.move_to_end(key)
+        if len(self.cache) >= self.max_size:
+            self.cache.popitem(last=False)
+
+
 class ContentHasher:
     def __init__(
         self,
         hash_algorithm: str = "sha256",
         hash_length: int = 5,
         state_dir: Path = Path("goto_state"),
+        cache_size: int = 100,
     ):
-        self.hash_map = {}
         self.hash_algorithm = hash_algorithm
         self.hash_length = hash_length
         self.state_dir = state_dir
+        self.cache = LRU(cache_size)
 
     def hash(self, content: bytes) -> str:
         hash = hashlib.new(self.hash_algorithm)
@@ -34,7 +55,7 @@ class ContentHasher:
 
     def save(self, content: bytes) -> str:
         content_hash = self.hash(content)
-        self.hash_map[content_hash] = content
+        self.cache[content_hash] = content
         file_path = self.state_dir / file_location(
             self.hash_algorithm, self.hash_length, content_hash
         )
@@ -56,7 +77,7 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         content_id = parsed_url.path.split("/")[-1]
         try:
-            content = self.hasher.hash_map[content_id]
+            content = self.hasher.cache[content_id]
         except KeyError:
             try:
                 content = (
@@ -65,7 +86,7 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         self.hasher.hash_algorithm, self.hasher.hash_length, content_id
                     )
                 ).read_bytes()
-                self.hasher.hash_map[content_id] = content
+                self.hasher.cache[content_id] = content
             except FileNotFoundError:
                 self.send_response(404)
                 self.end_headers()
@@ -125,6 +146,12 @@ def parse_arguments() -> argparse.Namespace:
         default="goto_state",
         help="Location where to store the shortened urls",
     )
+    parser.add_argument(
+        "--cache-size",
+        type=int,
+        default=100,
+        help="how many urls to cache in memory",
+    )
     return parser.parse_args()
 
 
@@ -133,12 +160,16 @@ def run_server(
     hash_algorithm: str = "sha256",
     hash_length: int = 5,
     state_dir: Path = Path("goto_state"),
+    cache_size: int = 100,
 ) -> None:
     """Run the multithreaded HTTP server on the specified port."""
     server_address: tuple[str, int] = ("", port)
 
     hasher = ContentHasher(
-        hash_algorithm=hash_algorithm, hash_length=hash_length, state_dir=state_dir
+        hash_algorithm=hash_algorithm,
+        hash_length=hash_length,
+        state_dir=state_dir,
+        cache_size=cache_size,
     )
 
     # Create the server with the custom handler
@@ -167,6 +198,7 @@ def main() -> None:
         hash_algorithm=args.hash_algorithm,
         hash_length=args.hash_length,
         state_dir=Path(args.state_dir),
+        cache_size=args.cache_size,
     )
 
 
