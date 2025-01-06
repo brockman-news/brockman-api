@@ -13,7 +13,7 @@
   outputs =
     inputs@{ flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } (
-      { lib, ... }:
+      { lib, self, ... }:
       {
         imports = [
           ./treefmt.nix
@@ -50,6 +50,8 @@
               in
               packages // devShells // self'.packages.goto.tests;
           };
+        flake.nixosModules.goto.imports = [ ./module.nix ];
+        flake.nixosModules.default.imports = [ self.nixosModules.goto ];
       }
     );
 }
