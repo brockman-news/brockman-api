@@ -2,15 +2,30 @@ import argparse
 import hashlib
 import http.server
 import socketserver
+from pathlib import Path
 from threading import Thread
-from urllib.parse import ParseResult, parse_qs, urlparse
+from urllib.parse import ParseResult, urlparse
+
+
+def file_location(algorithm: str, length: int, hash_digest: str) -> Path:
+    path = Path(algorithm) / f"l{str(length)}"
+    for i in range(0, length - 2, 2):
+        path = path / hash_digest[i : i + 2]
+    path = path / hash_digest
+    return path
 
 
 class ContentHasher:
-    def __init__(self, hash_algorithm: str = "sha256", hash_length: int = 5):
+    def __init__(
+        self,
+        hash_algorithm: str = "sha256",
+        hash_length: int = 5,
+        state_dir: Path = Path("goto_state"),
+    ):
         self.hash_map = {}
         self.hash_algorithm = hash_algorithm
         self.hash_length = hash_length
+        self.state_dir = state_dir
 
     def hash(self, content: bytes) -> str:
         hash = hashlib.new(self.hash_algorithm)
@@ -20,7 +35,11 @@ class ContentHasher:
     def save(self, content: bytes) -> str:
         content_hash = self.hash(content)
         self.hash_map[content_hash] = content
-        # TODO - Save the content to a file
+        file_path = self.state_dir / file_location(
+            self.hash_algorithm, self.hash_length, content_hash
+        )
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_bytes(content)
         return content_hash
 
 
@@ -38,13 +57,22 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         content_id = parsed_url.path.split("/")[-1]
         try:
             content = self.hasher.hash_map[content_id]
-            self.send_response(302)
-            self.send_header("Location", content.decode())
-            self.end_headers()
-            return
         except KeyError:
-            self.send_response(404)
-            self.end_headers()
+            try:
+                content = (
+                    self.hasher.state_dir
+                    / file_location(
+                        self.hasher.hash_algorithm, self.hasher.hash_length, content_id
+                    )
+                ).read_bytes()
+                self.hasher.hash_map[content_id] = content
+            except FileNotFoundError:
+                self.send_response(404)
+                self.end_headers()
+                return
+        self.send_response(302)
+        self.send_header("Location", content.decode())
+        self.end_headers()
 
     def do_POST(self) -> None:
         content_length = int(self.headers["Content-Length"])
@@ -84,16 +112,27 @@ def parse_arguments() -> argparse.Namespace:
         default=5,
         help="Length of the hash to generate (default: 5).",
     )
+    parser.add_argument(
+        "--state-dir",
+        type=str,
+        default="goto_state",
+        help="Location where to store the shortened urls",
+    )
     return parser.parse_args()
 
 
 def run_server(
-    port: int = 8080, hash_algorithm: str = "sha256", hash_length: int = 5
+    port: int = 8080,
+    hash_algorithm: str = "sha256",
+    hash_length: int = 5,
+    state_dir: Path = Path("goto_state"),
 ) -> None:
     """Run the multithreaded HTTP server on the specified port."""
     server_address: tuple[str, int] = ("", port)
 
-    hasher = ContentHasher(hash_algorithm=hash_algorithm, hash_length=hash_length)
+    hasher = ContentHasher(
+        hash_algorithm=hash_algorithm, hash_length=hash_length, state_dir=state_dir
+    )
 
     # Create the server with the custom handler
     def handler(*args, **kwargs):
@@ -117,7 +156,10 @@ def run_server(
 def main() -> None:
     args = parse_arguments()
     run_server(
-        port=args.port, hash_algorithm=args.hash_algorithm, hash_length=args.hash_length
+        port=args.port,
+        hash_algorithm=args.hash_algorithm,
+        hash_length=args.hash_length,
+        state_dir=Path(args.state_dir),
     )
 
 
