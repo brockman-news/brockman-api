@@ -62,7 +62,10 @@ in
     users.users.goto = {
       isSystemUser = true;
       home = "/var/lib/goto";
+      group = "goto";
     };
+
+    users.groups.goto = {};
 
     systemd.services.goto = {
       description = "goto simple url shortener";
