@@ -63,7 +63,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--irc-server",
-        type=int,
+        type=str,
         default="brockman.news",
         help="hostname of the IRC server",
     )
