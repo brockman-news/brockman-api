@@ -8,12 +8,12 @@ import string
 from threading import Thread
 
 
-def send_irc_message(channel: str, message: str) -> None:
+def send_irc_message(server: str, channel: str, message: str) -> None:
     # generate a random alphanumeric nick
     nick = "api_" + "".join(random.choices(string.ascii_letters + string.digits, k=8))
 
     conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    conn.connect(("brockman.news", 6667))
+    conn.connect((server, 6667))
     conn.send(f"NICK {nick}\n".encode())
     conn.send(f"USER {nick} 0 * :{nick}\n".encode())
     conn.send(b"JOIN #all\n")
@@ -26,6 +26,8 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     control_channel: str
 
     def __init__(self, *args, irc_server: str, control_channel: str, **kwargs):
+        self.irc_server = irc_server
+        self.control_channel = control_channel
         super().__init__(*args, **kwargs)
 
     def do_GET(self) -> None:
@@ -40,7 +42,9 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         content = self.rfile.read(content_length)
         body = json.loads(content)
         send_irc_message(
-            channel="#all", message=f"brockman: add {body['nick']} {body['feed']}"
+            server=self.irc_server,
+            channel=self.control_channel,
+            message=f"brockman: add {body['nick']} {body['feed']}",
         )
         self.send_response(200)
         self.end_headers()
