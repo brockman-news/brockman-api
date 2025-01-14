@@ -15,9 +15,13 @@ def send_irc_message(server: str, channel: str, message: str) -> None:
     conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     conn.connect((server, 6667))
     conn.send(f"NICK {nick}\n".encode())
+    print(conn.recv(2048).decode())
     conn.send(f"USER {nick} 0 * :{nick}\n".encode())
+    print(conn.recv(2048).decode())
     conn.send(b"JOIN #all\n")
+    print(conn.recv(2048).decode())
     conn.send(f"PRIVMSG {channel} :{message}\n".encode())
+    print(conn.recv(2048).decode())
     conn.close()
 
 
@@ -41,11 +45,15 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         content_length = int(self.headers["Content-Length"])
         content = self.rfile.read(content_length)
         body = json.loads(content)
+        print(
+            f"sending message to follow {body['feed']} to {self.irc_server} {self.control_channel}"
+        )
         send_irc_message(
             server=self.irc_server,
             channel=self.control_channel,
             message=f"brockman: add {body['nick']} {body['feed']}",
         )
+        print("message sent")
         self.send_response(200)
         self.end_headers()
 
