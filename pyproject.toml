@@ -3,8 +3,8 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "goto"
-description = "simple url shortener"
+name = "brockman-api"
+description = "brockman api"
 version = "1.2.0"
 authors = [{ name = "lassulus", email = "art@lassul.us" }]
 license = { text = "MIT" }
@@ -16,13 +16,13 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/lassulus/goto"
+Homepage = "https://github.com/lassulus/brockman-api"
 
 [project.scripts]
-goto = "goto.server:main"
+brockman-api = "brockman_api.server:main"
 
 [tool.setuptools]
-packages = ["goto"]
+packages = ["brockman_api"]
 
 [tool.pytest.ini_options]
 testpaths = "tests"

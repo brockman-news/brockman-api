@@ -6,7 +6,7 @@
   runCommand,
 }:
 buildPythonApplication {
-  pname = "goto`";
+  pname = "brockman-api";
   version = "1.0.0";
   src = ./.;
   format = "pyproject";
@@ -14,7 +14,7 @@ buildPythonApplication {
   nativeBuildInputs = [ setuptools ];
   doCheck = true;
   checkPhase = ''
-    PYTHONPATH= $out/bin/goto --help
+    PYTHONPATH= $out/bin/brockman-api --help
   '';
   passthru.tests.pytest =
     runCommand "pytest"

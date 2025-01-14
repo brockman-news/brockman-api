@@ -1,5 +1,5 @@
 {
-  description = "simple url shortener";
+  description = "api server for brockman";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -34,8 +34,8 @@
             ...
           }:
           {
-            packages.goto = pkgs.python3.pkgs.callPackage ./. { };
-            packages.default = config.packages.goto;
+            packages.brockman-api = pkgs.python3.pkgs.callPackage ./. { };
+            packages.default = config.packages.brockman-api;
             devShells.default = self'.packages.default.overrideAttrs (old: {
               nativeBuildInputs = old.nativeBuildInputs ++ [
                 pkgs.python3Packages.ipython
@@ -48,10 +48,10 @@
                 packages = lib.mapAttrs' (n: lib.nameValuePair "package-${n}") self'.packages;
                 devShells = lib.mapAttrs' (n: lib.nameValuePair "devShell-${n}") self'.devShells;
               in
-              packages // devShells // self'.packages.goto.tests;
+              packages // devShells // self'.packages.brockman-api.tests;
           };
-        flake.nixosModules.goto.imports = [ ./module.nix ];
-        flake.nixosModules.default.imports = [ self.nixosModules.goto ];
+        flake.nixosModules.brockman-api.imports = [ ./module.nix ];
+        flake.nixosModules.default.imports = [ self.nixosModules.brockman-api ];
       }
     );
 }

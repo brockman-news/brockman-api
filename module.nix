@@ -5,11 +5,11 @@
   ...
 }:
 let
-  cfg = config.services.goto;
+  cfg = config.services.brockman-api;
 in
 {
-  options.services.goto = {
-    enable = lib.mkEnableOption "goto simple url shortener";
+  options.services.brockman-api = {
+    enable = lib.mkEnableOption "brockman api service";
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.python3.pkgs.callPackage ./default.nix { };
@@ -19,71 +19,36 @@ in
       default = 7331;
       description = "Port to listen on";
     };
-    hashAlgorithm = lib.mkOption {
-      type = lib.types.enum [
-        "blake2b"
-        "blake2s"
-        "md5"
-        "md5-sha1"
-        "ripemd160"
-        "sha1"
-        "sha224"
-        "sha256"
-        "sha384"
-        "sha3_224"
-        "sha3_256"
-        "sha3_384"
-        "sha3_512"
-        "sha512"
-        "sha512_224"
-        "sha512_256"
-        "shake_128"
-        "shake_256"
-        "sm3"
-      ];
-      default = "sha256";
-      description = "Hash algorithm to use";
+    irc-server = lib.mkOption {
+      type = lib.types.string;
+      default = "brockman.news";
+      description = "IRC server to connect to";
     };
-    hashLength = lib.mkOption {
-      type = lib.types.int;
-      default = 5;
-      description = "Length of the hash that goto generates";
-    };
-    cacheSize = lib.mkOption {
-      type = lib.types.int;
-      default = 100;
-      description = "Number of entries to cache in memory";
+    control-channel = lib.mkOption {
+      type = lib.types.string;
+      default = "#all";
+      description = "IRC channel to listen on";
     };
     openFirewall = lib.mkEnableOption "open port in firewall";
   };
   config = lib.mkIf cfg.enable {
     networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [ cfg.port ];
 
-    users.users.goto = {
-      isSystemUser = true;
-      home = "/var/lib/goto";
-      group = "goto";
-    };
-
-    users.groups.goto = {};
-
-    systemd.services.goto = {
-      description = "goto simple url shortener";
+    systemd.services.brockman-api = {
+      description = "brockman api service";
       wantedBy = [ "multi-user.target" ];
       after = [
         "network.target"
       ];
       serviceConfig = {
-        User = "goto";
         ExecStart = ''
-          ${cfg.package}/bin/goto \
+          ${cfg.package}/bin/brockman-api \
             --port ${toString cfg.port} \
-            --hash-algorithm ${cfg.hashAlgorithm} \
-            --hash-length ${toString cfg.hashLength} \
-            --state-dir /var/lib/goto \
-            --cache-size ${toString cfg.cacheSize}
+            --irc-server ${cfg.irc-server} \
+            --control-channel ${cfg.control-channel}
         '';
         StateDirectory = "goto";
+        DynamicUser = true;
       };
     };
   };
