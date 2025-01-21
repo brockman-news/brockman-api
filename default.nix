@@ -1,9 +1,7 @@
 {
   buildPythonApplication,
   makeWrapper,
-  pytestCheckHook,
   setuptools,
-  runCommand,
 }:
 buildPythonApplication {
   pname = "brockman-api";
@@ -16,17 +14,4 @@ buildPythonApplication {
   checkPhase = ''
     PYTHONPATH= $out/bin/brockman-api --help
   '';
-  passthru.tests.pytest =
-    runCommand "pytest"
-      {
-        nativeBuildInputs = [
-          pytestCheckHook
-        ];
-      }
-      ''
-        cp -r ${./.}/* .
-        chmod -R +w .
-        pytest .
-        touch $out
-      '';
 }

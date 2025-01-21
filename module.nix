@@ -48,7 +48,6 @@ in
             --control-channel ${cfg.control-channel}
         '';
         StateDirectory = "goto";
-        DynamicUser = true;
       };
     };
   };

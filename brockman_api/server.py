@@ -1,27 +1,53 @@
 import argparse
 import http.server
 import json
+import logging
 import random
 import socket
 import socketserver
 import string
 from threading import Thread
 
+log = logging.getLogger("brockman_api.server")
+
 
 def send_irc_message(server: str, channel: str, message: str) -> None:
     # generate a random alphanumeric nick
     nick = "api_" + "".join(random.choices(string.ascii_letters + string.digits, k=8))
 
-    conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    conn.connect((server, 6667))
-    conn.send(f"NICK {nick}\n".encode())
-    print(conn.recv(2048).decode())
-    conn.send(f"USER {nick} 0 * :{nick}\n".encode())
-    print(conn.recv(2048).decode())
-    conn.send(b"JOIN #all\n")
-    print(conn.recv(2048).decode())
-    conn.send(f"PRIVMSG {channel} :{message}\n".encode())
-    print(conn.recv(2048).decode())
+    addrinfo = socket.getaddrinfo(server, 6667, socket.AF_UNSPEC, socket.SOCK_STREAM)
+    conn = None
+    for res in addrinfo:
+        af, socktype, proto, canonname, sa = res
+        try:
+            conn = socket.socket(af, socktype, proto)
+            conn.connect(sa)
+            break
+        except OSError:
+            if conn:
+                conn.close()
+    if conn is None:
+        raise OSError("Could not open socket")
+    conn.settimeout(1.0)
+    log.info("connected to server")
+    msg = f"USER {nick} 0 * :{nick}\nNICK {nick}\nJOIN #all\n"
+    log.info(f"sending {msg}")
+    conn.send(msg.encode())
+    data = None
+    buffer = b""  # A bytes object to store received data
+    while True:
+        try:
+            data = conn.recv(1024)  # Adjust buffer size as needed
+            if data:  # If no data is received, the connection is likely closed
+                buffer += data
+        except TimeoutError:
+            break
+    log.info(buffer.decode())
+    msg = f"PRIVMSG {channel} :{message}\n"
+    log.info(f"sending {msg}")
+    conn.send(msg.encode())
+    log.info(conn.recv(2048).decode())
+    log.info("closing connection")
     conn.close()
 
 
@@ -45,7 +71,7 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         content_length = int(self.headers["Content-Length"])
         content = self.rfile.read(content_length)
         body = json.loads(content)
-        print(
+        log.info(
             f"sending message to follow {body['feed']} to {self.irc_server} {self.control_channel}"
         )
         send_irc_message(
@@ -53,7 +79,7 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             channel=self.control_channel,
             message=f"brockman: add {body['nick']} {body['feed']}",
         )
-        print("message sent")
+        log.info("message sent")
         self.send_response(200)
         self.end_headers()
 
@@ -107,7 +133,7 @@ def run_server(
 
     httpd: ThreadedHTTPServer = ThreadedHTTPServer(server_address, handler)
 
-    print(f"Serving on port {server_address[1]}")
+    log.info(f"Serving on port {server_address[1]}")
 
     # Start the server in a separate thread
     server_thread: Thread = Thread(target=httpd.serve_forever)
@@ -115,12 +141,13 @@ def run_server(
         True  # Allows the program to exit if the main thread terminates
     )
     server_thread.start()
-    print("Server running in a separate thread.")
+    log.info("Server running in a separate thread.")
     server_thread.join()
     httpd.shutdown()
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO)
     args = parse_arguments()
     run_server(
         port=args.port,

@@ -1,7 +1,9 @@
-
 # Brockman API Service
 
-The Brockman API Service is a simple multithreaded HTTP server that listens for POST requests and sends messages to an IRC channel. This service is designed to facilitate communication with an IRC server by posting messages to a specified channel.
+The Brockman API Service is a simple multithreaded HTTP server that listens for
+POST requests and sends messages to an IRC channel. This service is designed to
+facilitate communication with an IRC server by posting messages to a specified
+channel.
 
 ## Features
 
@@ -16,6 +18,7 @@ The Brockman API Service is a simple multithreaded HTTP server that listens for 
 ## Usage
 
 To run the Brockman API Service, use the following command:
+
 ```sh
 nix run . -- --port <PORT> --irc-server <IRC_SERVER> --control-channel <CONTROL_CHANNEL>
 ```
@@ -25,7 +28,6 @@ nix run . -- --port <PORT> --irc-server <IRC_SERVER> --control-channel <CONTROL_
 - `--port`: Port number for the server to listen on (default: 8080).
 - `--irc-server`: Hostname of the IRC server (default: brockman.news).
 - `--control-channel`: Channel to send control messages to (default: #all).
-
 
 ### Example
 
@@ -55,8 +57,10 @@ Send a message to the IRC channel.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file
+for details.
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
+Contributions are welcome! Please open an issue or submit a pull request for any
+improvements or bug fixes.
