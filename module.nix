@@ -20,12 +20,12 @@ in
       description = "Port to listen on";
     };
     irc-server = lib.mkOption {
-      type = lib.types.string;
+      type = lib.types.nonEmptyStr;
       default = "brockman.news";
       description = "IRC server to connect to";
     };
     control-channel = lib.mkOption {
-      type = lib.types.string;
+      type = lib.types.nonEmptyStr;
       default = "#all";
       description = "IRC channel to listen on";
     };
